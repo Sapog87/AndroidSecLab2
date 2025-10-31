@@ -16,6 +16,8 @@
 
 package com.example.inventory.ui.item
 
+import android.util.Patterns.EMAIL_ADDRESS
+import android.util.Patterns.PHONE
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -55,7 +57,12 @@ class ItemEntryViewModel(private val itemsRepository: ItemsRepository) : ViewMod
 
     private fun validateInput(uiState: ItemDetails = itemUiState.itemDetails): Boolean {
         return with(uiState) {
-            name.isNotBlank() && price.isNotBlank() && quantity.isNotBlank()
+            name.isNotBlank()
+                    && price.isNotBlank()
+                    && quantity.isNotBlank()
+                    && supplierName.isNotBlank()
+                    && EMAIL_ADDRESS.matcher(supplierEmail).matches()
+                    && PHONE.matcher(supplierPhoneNumber).matches()
         }
     }
 }
@@ -73,6 +80,9 @@ data class ItemDetails(
     val name: String = "",
     val price: String = "",
     val quantity: String = "",
+    val supplierName: String = "",
+    val supplierEmail: String = "",
+    val supplierPhoneNumber: String = ""
 )
 
 /**
@@ -84,7 +94,10 @@ fun ItemDetails.toItem(): Item = Item(
     id = id,
     name = name,
     price = price.toDoubleOrNull() ?: 0.0,
-    quantity = quantity.toIntOrNull() ?: 0
+    quantity = quantity.toIntOrNull() ?: 0,
+    supplierName = supplierName,
+    supplierEmail = supplierEmail,
+    supplierPhoneNumber = supplierPhoneNumber
 )
 
 fun Item.formatedPrice(): String {
@@ -106,5 +119,8 @@ fun Item.toItemDetails(): ItemDetails = ItemDetails(
     id = id,
     name = name,
     price = price.toString(),
-    quantity = quantity.toString()
+    quantity = quantity.toString(),
+    supplierName = supplierName,
+    supplierEmail = supplierEmail,
+    supplierPhoneNumber = supplierPhoneNumber
 )

@@ -35,4 +35,15 @@
     <string name="sell">Sell</string>
     <string name="yes">Yes</string>
     <string name="required_fields">*required fields</string>
+    <string name="field_is_required">Field is required</string>
+    <string name="email_is_invalid">Email is invalid</string>
+    <string name="phone_number_is_invalid">Phone Number is invalid</string>
+    <string name="supplier_name">Supplier Name</string>
+    <string name="supplier_name_req">Supplier Name*</string>
+    <string name="supplier_email">Supplier Email</string>
+    <string name="supplier_email_req">Supplier Email*</string>
+    <string name="supplier_phone_number">Supplier Phone Number</string>
+    <string name="supplier_phone_number_req">Supplier Phone Number*</string>
+    <string name="share">Share</string>
+    <string name="share_item_title">Share Item</string>
 </resources>

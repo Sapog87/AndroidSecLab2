@@ -16,6 +16,8 @@
 
 package com.example.inventory.ui.item
 
+import android.util.Patterns.EMAIL_ADDRESS
+import android.util.Patterns.PHONE
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.calculateEndPadding
@@ -147,11 +149,20 @@ fun ItemInputForm(
             ),
             modifier = Modifier.fillMaxWidth(),
             enabled = enabled,
-            singleLine = true
+            singleLine = true,
+            isError = itemDetails.name.isBlank(),
+            supportingText = {
+                when {
+                    itemDetails.name.isBlank() -> Text(stringResource(R.string.field_is_required))
+                }
+            }
         )
         OutlinedTextField(
             value = itemDetails.price,
-            onValueChange = { onValueChange(itemDetails.copy(price = it)) },
+            onValueChange = { it ->
+                val filtered = it.filter { it.isDigit() || it == '.' }
+                onValueChange(itemDetails.copy(price = filtered))
+            },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
             label = { Text(stringResource(R.string.item_price_req)) },
             colors = OutlinedTextFieldDefaults.colors(
@@ -162,7 +173,15 @@ fun ItemInputForm(
             leadingIcon = { Text(Currency.getInstance(Locale.getDefault()).symbol) },
             modifier = Modifier.fillMaxWidth(),
             enabled = enabled,
-            singleLine = true
+            singleLine = true,
+            isError = itemDetails.price.toDoubleOrNull() == null,
+            supportingText = {
+                when {
+                    itemDetails.price.toDoubleOrNull() == null -> Text(
+                        stringResource(R.string.field_is_required)
+                    )
+                }
+            }
         )
         OutlinedTextField(
             value = itemDetails.quantity,
@@ -176,7 +195,76 @@ fun ItemInputForm(
             ),
             modifier = Modifier.fillMaxWidth(),
             enabled = enabled,
-            singleLine = true
+            singleLine = true,
+            isError = itemDetails.quantity.toIntOrNull() == null,
+            supportingText = {
+                when {
+                    itemDetails.quantity.toIntOrNull() == null -> Text(stringResource(R.string.field_is_required))
+                }
+            }
+        )
+        OutlinedTextField(
+            value = itemDetails.supplierName,
+            onValueChange = { onValueChange(itemDetails.copy(supplierName = it)) },
+            label = { Text(stringResource(R.string.supplier_name_req)) },
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                unfocusedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                disabledContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+            ),
+            modifier = Modifier.fillMaxWidth(),
+            enabled = enabled,
+            singleLine = true,
+            isError = itemDetails.supplierName.isBlank(),
+            supportingText = {
+                when {
+                    itemDetails.supplierName.isBlank() -> Text(stringResource(R.string.field_is_required))
+                }
+            }
+        )
+        OutlinedTextField(
+            value = itemDetails.supplierEmail,
+            onValueChange = { onValueChange(itemDetails.copy(supplierEmail = it)) },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+            label = { Text(stringResource(R.string.supplier_email_req)) },
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                unfocusedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                disabledContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+            ),
+            modifier = Modifier.fillMaxWidth(),
+            enabled = enabled,
+            singleLine = true,
+            isError = !EMAIL_ADDRESS.matcher(itemDetails.supplierEmail).matches(),
+            supportingText = {
+                when {
+                    !EMAIL_ADDRESS.matcher(itemDetails.supplierEmail).matches() -> {
+                        Text(stringResource(R.string.email_is_invalid))
+                    }
+                }
+            }
+        )
+        OutlinedTextField(
+            value = itemDetails.supplierPhoneNumber,
+            onValueChange = { onValueChange(itemDetails.copy(supplierPhoneNumber = it)) },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+            label = { Text(stringResource(R.string.supplier_phone_number_req)) },
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                unfocusedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                disabledContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+            ),
+            modifier = Modifier.fillMaxWidth(),
+            enabled = enabled,
+            singleLine = true,
+            isError = !PHONE.matcher(itemDetails.supplierPhoneNumber).matches(),
+            supportingText = {
+                when {
+                    !PHONE.matcher(itemDetails.supplierPhoneNumber).matches() -> {
+                        Text(stringResource(R.string.phone_number_is_invalid))
+                    }
+                }
+            }
         )
         if (enabled) {
             Text(
@@ -191,10 +279,16 @@ fun ItemInputForm(
 @Composable
 private fun ItemEntryScreenPreview() {
     InventoryTheme {
-        ItemEntryBody(itemUiState = ItemUiState(
-            ItemDetails(
-                name = "Item name", price = "10.00", quantity = "5"
-            )
-        ), onItemValueChange = {}, onSaveClick = {})
+        ItemEntryBody(
+            itemUiState = ItemUiState(
+                ItemDetails(
+                    name = "Game",
+                    price = "100.0",
+                    quantity = "20",
+                    supplierName = "GameSupplierName",
+                    supplierEmail = "game-supplier-email@game.game",
+                    supplierPhoneNumber = "+123456"
+                )
+            ), onItemValueChange = {}, onSaveClick = {})
     }
 }

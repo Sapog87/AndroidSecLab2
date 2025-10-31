@@ -158,7 +158,8 @@ private fun InventoryList(
         contentPadding = contentPadding
     ) {
         items(items = itemList, key = { it.id }) { item ->
-            InventoryItem(item = item,
+            InventoryItem(
+                item = item,
                 modifier = Modifier
                     .padding(dimensionResource(id = R.dimen.padding_small))
                     .clickable { onItemClick(item) })
@@ -202,9 +203,36 @@ private fun InventoryItem(
 @Composable
 fun HomeBodyPreview() {
     InventoryTheme {
-        HomeBody(listOf(
-            Item(1, "Game", 100.0, 20), Item(2, "Pen", 200.0, 30), Item(3, "TV", 300.0, 50)
-        ), onItemClick = {})
+        HomeBody(
+            listOf(
+                Item(
+                    1,
+                    "Game",
+                    100.0,
+                    20,
+                    "GameSupplierName",
+                    "game-supplier-email@game.game",
+                    "+123456"
+                ),
+                Item(
+                    2,
+                    "Pen",
+                    200.0,
+                    30,
+                    "PenSupplierName",
+                    "pen-supplier-email@pen.pen",
+                    "+123456"
+                ),
+                Item(
+                    3,
+                    "TV",
+                    300.0,
+                    50,
+                    "TvSupplierName",
+                    "tv-supplier-email@tv.tv",
+                    "1"
+                )
+            ), onItemClick = {})
     }
 }
 
@@ -221,7 +249,15 @@ fun HomeBodyEmptyListPreview() {
 fun InventoryItemPreview() {
     InventoryTheme {
         InventoryItem(
-            Item(1, "Game", 100.0, 20),
+            Item(
+                1,
+                "Game",
+                100.0,
+                20,
+                "GameSupplierName",
+                "game-supplier-email@game.game",
+                "+123456"
+            )
         )
     }
 }

@@ -82,7 +82,8 @@ data class ItemDetails(
     val quantity: String = "",
     val supplierName: String = "",
     val supplierEmail: String = "",
-    val supplierPhoneNumber: String = ""
+    val supplierPhoneNumber: String = "",
+    val source: String = "manual"
 )
 
 /**

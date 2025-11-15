@@ -46,4 +46,10 @@
     <string name="supplier_phone_number_req">Supplier Phone Number*</string>
     <string name="share">Share</string>
     <string name="share_item_title">Share Item</string>
+    <string name="settings">Settings</string>
+    <string name="hide_sensitive_data">Hide sensitive data</string>
+    <string name="disable_share">Disable data sharing</string>
+    <string name="use_default_quantity">Use default quantity</string>
+    <string name="default_quantity">Default quantity</string>
+    <string name="source">Source</string>
 </resources>

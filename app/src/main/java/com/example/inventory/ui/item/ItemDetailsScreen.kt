@@ -16,6 +16,9 @@
 
 package com.example.inventory.ui.item
 
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.StringRes
@@ -51,23 +54,56 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.security.crypto.EncryptedFile
+import androidx.security.crypto.MasterKeys
 import com.example.inventory.InventoryTopAppBar
 import com.example.inventory.R
 import com.example.inventory.data.Item
+import com.example.inventory.settings.AppPreferences
 import com.example.inventory.ui.AppViewModelProvider
 import com.example.inventory.ui.navigation.NavigationDestination
 import com.example.inventory.ui.theme.InventoryTheme
+import com.google.gson.Gson
 import kotlinx.coroutines.launch
+import java.io.File
+
+fun saveEncryptedItem(context: Context, uri: Uri, item: ItemDetails) {
+    val gson = Gson()
+    val json = gson.toJson(item)
+
+    val masterKey = MasterKeys.getOrCreate(MasterKeys.AES256_GCM_SPEC)
+
+    val encryptedFile = EncryptedFile.Builder(
+        File(context.cacheDir, "temp_item.enc"),
+        context,
+        masterKey,
+        EncryptedFile.FileEncryptionScheme.AES256_GCM_HKDF_4KB
+    ).build()
+
+    encryptedFile.openFileOutput().use { out ->
+        out.write(json.toByteArray())
+    }
+
+    context.contentResolver.openOutputStream(uri)?.use { output ->
+        File(context.cacheDir, "temp_item.enc").inputStream().use { input ->
+            input.copyTo(output)
+        }
+    }
+}
 
 object ItemDetailsDestination : NavigationDestination {
     override val route = "item_details"
@@ -81,15 +117,25 @@ object ItemDetailsDestination : NavigationDestination {
 fun ItemDetailsScreen(
     navigateToEditItem: (Int) -> Unit,
     navigateBack: () -> Unit,
+    navigateToSettings: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: ItemDetailsViewModel = viewModel(factory = AppViewModelProvider.Factory)
 ) {
     val uiState = viewModel.uiState.collectAsState()
     val coroutineScope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val prefs = remember { AppPreferences(context) }
+
     val shareLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts
             .StartActivityForResult()
     ) {}
+
+    val exportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/octet-stream")
+    ) { uri ->
+        uri?.let { saveEncryptedItem(context, it, uiState.value.itemDetails) }
+    }
 
     val shareText = with(uiState.value.itemDetails) {
         """
@@ -110,7 +156,8 @@ fun ItemDetailsScreen(
             InventoryTopAppBar(
                 title = stringResource(ItemDetailsDestination.titleRes),
                 canNavigateBack = true,
-                navigateUp = navigateBack
+                navigateUp = navigateBack,
+                navigateToSettings = navigateToSettings
             )
         },
         floatingActionButton = {
@@ -145,17 +192,20 @@ fun ItemDetailsScreen(
                 }
             },
             onShare = {
-                val sendIntent = android.content.Intent().apply {
-                    action = android.content.Intent.ACTION_SEND
-                    putExtra(android.content.Intent.EXTRA_TEXT, shareText)
+                val sendIntent = Intent().apply {
+                    action = Intent.ACTION_SEND
+                    putExtra(Intent.EXTRA_TEXT, shareText)
                     type = "text/plain"
                 }
-                val shareIntent = android.content.Intent.createChooser(
+                val shareIntent = Intent.createChooser(
                     sendIntent,
                     R.string.share_item_title.toString()
                 )
                 shareLauncher.launch(shareIntent)
             },
+            hideSensitive = prefs.hideSensitiveData,
+            disableShare = prefs.disableShare,
+            onExport = { exportLauncher.launch("item_${uiState.value.itemDetails.id}.enc") },
             modifier = Modifier
                 .padding(
                     start = innerPadding.calculateStartPadding(LocalLayoutDirection.current),
@@ -163,8 +213,7 @@ fun ItemDetailsScreen(
                     end = innerPadding.calculateEndPadding(LocalLayoutDirection.current),
                 )
                 .verticalScroll(rememberScrollState()),
-
-            )
+        )
     }
 }
 
@@ -174,6 +223,9 @@ private fun ItemDetailsBody(
     onSellItem: () -> Unit,
     onDelete: () -> Unit,
     onShare: () -> Unit,
+    hideSensitive: Boolean,
+    disableShare: Boolean,
+    onExport: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -182,7 +234,9 @@ private fun ItemDetailsBody(
     ) {
         var deleteConfirmationRequired by rememberSaveable { mutableStateOf(false) }
         ItemDetails(
-            item = itemDetailsUiState.itemDetails.toItem(), modifier = Modifier.fillMaxWidth()
+            item = itemDetailsUiState.itemDetails.toItem(),
+            hideSensitive = hideSensitive,
+            modifier = Modifier.fillMaxWidth()
         )
         Button(
             onClick = onSellItem,
@@ -196,13 +250,21 @@ private fun ItemDetailsBody(
             onClick = onShare,
             modifier = Modifier.fillMaxWidth(),
             shape = MaterialTheme.shapes.small,
+            enabled = !disableShare,
         ) {
             Icon(
                 imageVector = Icons.Default.Share,
                 contentDescription = null,
-                modifier = Modifier.padding(end = dimensionResource(R.dimen.padding_small))
+                modifier = Modifier.padding(end = dimensionResource(R.dimen.padding_small)),
             )
             Text(stringResource(R.string.share))
+        }
+        Button(
+            onClick = onExport,
+            modifier = Modifier.fillMaxWidth(),
+            shape = MaterialTheme.shapes.small,
+        ) {
+            Text("Save to file")
         }
         OutlinedButton(
             onClick = { deleteConfirmationRequired = true },
@@ -227,7 +289,9 @@ private fun ItemDetailsBody(
 
 @Composable
 fun ItemDetails(
-    item: Item, modifier: Modifier = Modifier
+    item: Item,
+    hideSensitive: Boolean,
+    modifier: Modifier = Modifier
 ) {
     Card(
         modifier = modifier, colors = CardDefaults.cardColors(
@@ -274,6 +338,7 @@ fun ItemDetails(
             ItemDetailsRow(
                 labelResID = R.string.supplier_name,
                 itemDetail = item.supplierName,
+                hideSensitive = hideSensitive,
                 modifier = Modifier.padding(
                     horizontal = dimensionResource(
                         id = R.dimen.padding_medium
@@ -283,6 +348,7 @@ fun ItemDetails(
             ItemDetailsRow(
                 labelResID = R.string.supplier_email,
                 itemDetail = item.supplierEmail,
+                hideSensitive = hideSensitive,
                 modifier = Modifier.padding(
                     horizontal = dimensionResource(
                         id = R.dimen.padding_medium
@@ -292,6 +358,16 @@ fun ItemDetails(
             ItemDetailsRow(
                 labelResID = R.string.supplier_phone_number,
                 itemDetail = item.supplierPhoneNumber,
+                hideSensitive = hideSensitive,
+                modifier = Modifier.padding(
+                    horizontal = dimensionResource(
+                        id = R.dimen.padding_medium
+                    )
+                )
+            )
+            ItemDetailsRow(
+                labelResID = R.string.source,
+                itemDetail = item.source,
                 modifier = Modifier.padding(
                     horizontal = dimensionResource(
                         id = R.dimen.padding_medium
@@ -305,12 +381,21 @@ fun ItemDetails(
 
 @Composable
 private fun ItemDetailsRow(
-    @StringRes labelResID: Int, itemDetail: String, modifier: Modifier = Modifier
+    @StringRes labelResID: Int,
+    itemDetail: String,
+    hideSensitive: Boolean = false,
+    modifier: Modifier = Modifier
 ) {
-    Row(modifier = modifier) {
+    Row(modifier = modifier.fillMaxWidth()) {
         Text(text = stringResource(labelResID))
         Spacer(modifier = Modifier.weight(1f))
-        Text(text = itemDetail, fontWeight = FontWeight.Bold)
+        Text(
+            text = itemDetail,
+            fontWeight = FontWeight.Bold,
+            modifier = if (hideSensitive) {
+                Modifier.blur(12.dp)
+            } else Modifier
+        )
     }
 }
 
@@ -351,6 +436,13 @@ fun ItemDetailsScreenPreview() {
                     "pen-supplier-email@pen.pen",
                     "+123456"
                 )
-            ), onSellItem = {}, onDelete = {}, onShare = {})
+            ),
+            onSellItem = {},
+            onDelete = {},
+            onShare = {},
+            hideSensitive = true,
+            disableShare = false,
+            onExport = {},
+        )
     }
 }

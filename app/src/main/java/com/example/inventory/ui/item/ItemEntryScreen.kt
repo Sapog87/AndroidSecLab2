@@ -35,8 +35,10 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
@@ -45,6 +47,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.inventory.InventoryTopAppBar
 import com.example.inventory.R
+import com.example.inventory.settings.AppPreferences
 import com.example.inventory.ui.AppViewModelProvider
 import com.example.inventory.ui.navigation.NavigationDestination
 import com.example.inventory.ui.theme.InventoryTheme
@@ -66,6 +69,9 @@ fun ItemEntryScreen(
     viewModel: ItemEntryViewModel = viewModel(factory = AppViewModelProvider.Factory)
 ) {
     val coroutineScope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val prefs = remember { AppPreferences(context) }
+
     Scaffold(
         topBar = {
             InventoryTopAppBar(
@@ -88,6 +94,8 @@ fun ItemEntryScreen(
                     navigateBack()
                 }
             },
+            useDefaultQuantity = prefs.useDefaultQuantity,
+            defaultQuantity = prefs.defaultQuantity.toString(),
             modifier = Modifier
                 .padding(
                     start = innerPadding.calculateStartPadding(LocalLayoutDirection.current),
@@ -105,6 +113,8 @@ fun ItemEntryBody(
     itemUiState: ItemUiState,
     onItemValueChange: (ItemDetails) -> Unit,
     onSaveClick: () -> Unit,
+    useDefaultQuantity: Boolean,
+    defaultQuantity: String,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -114,6 +124,8 @@ fun ItemEntryBody(
         ItemInputForm(
             itemDetails = itemUiState.itemDetails,
             onValueChange = onItemValueChange,
+            useDefaultQuantity = useDefaultQuantity,
+            defaultQuantity = defaultQuantity,
             modifier = Modifier.fillMaxWidth()
         )
         Button(
@@ -132,8 +144,19 @@ fun ItemInputForm(
     itemDetails: ItemDetails,
     modifier: Modifier = Modifier,
     onValueChange: (ItemDetails) -> Unit = {},
+    useDefaultQuantity: Boolean,
+    defaultQuantity: String,
     enabled: Boolean = true
 ) {
+    val displayedQuantity = remember(itemDetails.quantity, useDefaultQuantity) {
+        if (useDefaultQuantity && itemDetails.quantity.isBlank()) {
+            onValueChange(itemDetails.copy(quantity = defaultQuantity))
+            defaultQuantity
+        } else {
+            itemDetails.quantity
+        }
+    }
+
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(dimensionResource(id = R.dimen.padding_medium))
@@ -184,7 +207,7 @@ fun ItemInputForm(
             }
         )
         OutlinedTextField(
-            value = itemDetails.quantity,
+            value = displayedQuantity,
             onValueChange = { onValueChange(itemDetails.copy(quantity = it)) },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             label = { Text(stringResource(R.string.quantity_req)) },
@@ -196,10 +219,10 @@ fun ItemInputForm(
             modifier = Modifier.fillMaxWidth(),
             enabled = enabled,
             singleLine = true,
-            isError = itemDetails.quantity.toIntOrNull() == null,
+            isError = displayedQuantity.toIntOrNull() == null,
             supportingText = {
                 when {
-                    itemDetails.quantity.toIntOrNull() == null -> Text(stringResource(R.string.field_is_required))
+                    displayedQuantity.toIntOrNull() == null -> Text(stringResource(R.string.field_is_required))
                 }
             }
         )
@@ -266,6 +289,19 @@ fun ItemInputForm(
                 }
             }
         )
+        OutlinedTextField(
+            value = itemDetails.source,
+            onValueChange = { },
+            label = { Text(stringResource(R.string.source)) },
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                unfocusedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                disabledContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+            ),
+            modifier = Modifier.fillMaxWidth(),
+            enabled = false,
+            singleLine = true,
+        )
         if (enabled) {
             Text(
                 text = stringResource(R.string.required_fields),
@@ -289,6 +325,11 @@ private fun ItemEntryScreenPreview() {
                     supplierEmail = "game-supplier-email@game.game",
                     supplierPhoneNumber = "+123456"
                 )
-            ), onItemValueChange = {}, onSaveClick = {})
+            ),
+            onItemValueChange = {},
+            onSaveClick = {},
+            useDefaultQuantity = true,
+            defaultQuantity = "100"
+        )
     }
 }

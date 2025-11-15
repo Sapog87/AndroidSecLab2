@@ -31,5 +31,6 @@ data class Item(
     val quantity: Int,
     val supplierName: String,
     val supplierEmail: String,
-    val supplierPhoneNumber: String
+    val supplierPhoneNumber: String,
+    val source: String = "manual"
 )
